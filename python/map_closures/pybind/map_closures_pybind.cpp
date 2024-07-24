@@ -31,9 +31,12 @@
 #include <memory>
 #include <opencv2/core.hpp>
 #include <opencv2/core/eigen.hpp>
+#include <sophus/se3.hpp>
 #include <tuple>
 #include <vector>
 
+#include "map_closures/DensityMap.hpp"
+#include "map_closures/GroundAlign.hpp"
 #include "map_closures/MapClosures.hpp"
 #include "stl_vector_eigen.h"
 
@@ -79,5 +82,8 @@ PYBIND11_MODULE(map_closures_pybind, m) {
              })
         .def("_MatchAndAdd", &MapClosures::MatchAndAdd, "map_id"_a, "local_map"_a)
         .def("_ValidateClosure", &MapClosures::ValidateClosure, "reference_id"_a, "query_id"_a);
+    m.def(
+        "_get_ground_alignment", &GetGroundAlignment,
+        "pointcloud"_a, "projection_threshold"_a, "resolution"_a);
 }
 }  // namespace map_closures

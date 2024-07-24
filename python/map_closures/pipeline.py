@@ -72,7 +72,11 @@ class MapClosurePipeline:
             self.closure_config = MapClosuresConfig()
 
         self.kiss_config = KISSConfig()
-        self.kiss_config.mapping.voxel_size = 1.0
+        self.kiss_config.data.max_range = 30.0
+        self.kiss_config.data.min_range = 0.0
+        self.kiss_config.mapping.voxel_size = 0.3
+        self.kiss_config.mapping.max_points_per_voxel = 50
+
         self.odometry = KissICP(self.kiss_config)
         self.voxel_local_map = get_voxel_hash_map(self.kiss_config)
 
@@ -80,7 +84,7 @@ class MapClosurePipeline:
         self.map_closures = MapClosures(self.closure_config)
 
         self.local_maps: List[LocalMap] = []
-        self.kiss_poses: List[np.ndarray] = []
+        self.kiss_poses: np.ndarray = np.zeros((len(self._dataset), 4, 4))
         self.closures = []
 
         if self._eval and hasattr(self._dataset, "gt_poses"):
@@ -143,7 +147,7 @@ class MapClosurePipeline:
 
             source, keypoints = self.odometry.register_frame(frame, timestamps)
             current_frame_pose = self.odometry.last_pose
-            self.kiss_poses.append(current_frame_pose)
+            self.kiss_poses[scan_idx] = current_frame_pose
 
             frame_downsample = voxel_down_sample(frame, self.kiss_config.mapping.voxel_size * 0.5)
             frame_to_map_pose = np.linalg.inv(current_map_pose) @ current_frame_pose
@@ -152,8 +156,25 @@ class MapClosurePipeline:
                 source, keypoints, self.voxel_local_map, current_frame_pose, frame_to_map_pose
             )
 
-            if np.linalg.norm(frame_to_map_pose[:3, -1]) > 100.0 or (scan_idx == self._n_scans - 1):
+            if np.linalg.norm(frame_to_map_pose[:3, -1]) > 10 or (scan_idx == self._n_scans - 1):
                 local_map_pointcloud = self.voxel_local_map.point_cloud()
+                T = self.map_closures.GetGroundAlignment(
+                    local_map_pointcloud, np.eye(4), 1.0, self.closure_config.density_map_resolution
+                )
+
+                # aligned_pcd = o3d.geometry.PointCloud(
+                #     o3d.utility.Vector3dVector(local_map_pointcloud @ T[:3, :3].T)
+                # )
+                # viewer = o3d.visualization.Visualizer()
+                # viewer.create_window()
+                # viewer.add_geometry(aligned_pcd.paint_uniform_color([0.0, 1.0, 0.0]))
+                # opt = viewer.get_render_option()
+                # opt.show_coordinate_frame = True
+                # opt.point_color_option = o3d.visualization.PointColorOption.ZCoordinate
+                # viewer.run()
+                # viewer.destroy_window()
+
+                local_map_pointcloud = local_map_pointcloud @ T[:3, :3]
                 closure = self.map_closures.match_and_add(map_idx, local_map_pointcloud)
 
                 scan_indices_in_local_map.append(scan_idx)
@@ -200,14 +221,7 @@ class MapClosurePipeline:
                         ],
                     )
 
-                self.voxel_local_map.remove_far_away_points(frame_to_map_pose[:3, -1])
-                pts_to_keep = self.voxel_local_map.point_cloud()
                 self.voxel_local_map = get_voxel_hash_map(self.kiss_config)
-                self.voxel_local_map.add_points(
-                    transform_points(
-                        pts_to_keep, np.linalg.inv(current_frame_pose) @ current_map_pose
-                    )
-                )
                 current_map_pose = np.copy(current_frame_pose)
                 scan_indices_in_local_map.clear()
                 poses_in_local_map.clear()
@@ -233,7 +247,7 @@ class MapClosurePipeline:
         np.savetxt(os.path.join(self._results_dir, "map_closures.txt"), np.asarray(self.closures))
         np.save(
             os.path.join(self._results_dir, "kiss_poses.npy"),
-            np.asarray(self.kiss_poses),
+            self.kiss_poses,
         )
 
     def _log_to_console(self):
@@ -278,10 +292,10 @@ class MapClosurePipeline:
                 255 - local_map.density_map,
                 cmap="gray",
             )
-            o3d.io.write_point_cloud(
-                os.path.join(local_map_dir, f"{i:06d}.ply"),
-                o3d.geometry.PointCloud(o3d.utility.Vector3dVector(local_map.pointcloud)),
-            )
+            # o3d.io.write_point_cloud(
+            #     os.path.join(local_map_dir, f"{i:06d}.ply"),
+            #     o3d.geometry.PointCloud(o3d.utility.Vector3dVector(local_map.pointcloud)),
+            # )
 
     def _create_results_dir(self) -> Path:
         def get_timestamp() -> str:

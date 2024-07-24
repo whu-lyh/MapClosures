@@ -1,7 +1,7 @@
 # MIT License
 #
-# Copyright (c) 2024 Saurabh Gupta, Tiziano Guadagnino, Benedikt Mersch,
-# Ignacio Vizzo, Cyrill Stachniss.
+# Copyright (c) 2022 Ignacio Vizzo, Tiziano Guadagnino, Benedikt Mersch, Cyrill
+# Stachniss.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,9 +20,6 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-
-add_library(map_closures STATIC)
-target_sources(map_closures PRIVATE DensityMap.cpp AlignRansac2D.cpp MapClosures.cpp GroundAlign.cpp)
-target_include_directories(map_closures PUBLIC ${hbst_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/..)
-target_link_libraries(map_closures PUBLIC Eigen3::Eigen TBB::tbb tsl::robin_map ${OpenCV_LIBS} Sophus::Sophus)
-target_compile_features(map_closures PUBLIC cxx_std_17)
+include(FetchContent)
+FetchContent_Declare(tessil SYSTEM URL https://github.com/Tessil/robin-map/archive/refs/tags/v1.2.1.tar.gz)
+FetchContent_MakeAvailable(tessil)

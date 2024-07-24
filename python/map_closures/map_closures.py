@@ -22,12 +22,12 @@
 # SOFTWARE.
 import numpy as np
 from typing_extensions import TypeAlias
+from typing import List
 
 from map_closures.config import MapClosuresConfig
 from map_closures.pybind import map_closures_pybind
 
 ClosureCandidate: TypeAlias = map_closures_pybind._ClosureCandidate
-
 
 class MapClosures:
     def __init__(self, config: MapClosuresConfig = MapClosuresConfig()):
@@ -43,3 +43,15 @@ class MapClosures:
 
     def validate_closure(self, ref_idx: int, query_idx: int) -> ClosureCandidate:
         return self._pipeline._ValidateClosure(ref_idx, query_idx)
+
+    def GetGroundAlignment(
+        self,
+        pointcloud: np.ndarray,
+        projection_threshold: float,
+        resolution: float,
+    ) -> np.ndarray:
+        pointcloud_eigen = map_closures_pybind._Vector3dVector(pointcloud)
+        ground_alignment = map_closures_pybind._get_ground_alignment(
+            pointcloud_eigen, projection_threshold, resolution
+        )
+        return np.asarray(ground_alignment)

@@ -47,7 +47,7 @@ static constexpr int WTA_K = 2;
 static constexpr int nfeatures = 500;
 static constexpr int edge_threshold = 31;
 static constexpr int score_type = 0;
-static constexpr int patch_size = 31;
+static constexpr int patch_size = 71;
 static constexpr int fast_threshold = 35;
 }  // namespace
 
